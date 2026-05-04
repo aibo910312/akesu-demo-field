@@ -541,6 +541,6 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 if __name__ == "__main__":
     init_db()
-    port = 8082
+    port = 8091
     print(f"阿克苏地区示范田一览图服务启动: http://0.0.0.0:{port}/")
     ThreadedHTTPServer(("0.0.0.0", port), Handler).serve_forever()
