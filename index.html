@@ -300,6 +300,22 @@
   .form-group select option { background: #1a1a3a; color: var(--text); }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+  .gps-group { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .btn-gps {
+    padding: 8px 16px; border-radius: 6px; border: 1px solid var(--green);
+    background: rgba(34,197,94,0.1); color: var(--green); cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all 0.3s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-gps:hover { background: rgba(34,197,94,0.2); }
+  .btn-gps:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-gps.success { border-color: var(--cyan); color: var(--cyan); background: rgba(0,255,242,0.1); }
+  .gps-status { font-size: 12px; color: var(--text-dim); }
+  .gps-status.success { color: var(--green); }
+  .gps-status.error { color: var(--red); }
+  .btn-sm.nav-btn { border-color: var(--blue); color: var(--blue); }
+  .btn-sm.nav-btn:hover { background: rgba(77,159,255,0.15); }
+
   .photo-upload {
     border: 2px dashed var(--border); border-radius: 6px; padding: 16px;
     text-align: center; cursor: pointer; transition: all 0.3s;
@@ -638,6 +654,14 @@
     <div class="modal-body">
       <form id="addForm" onsubmit="submitForm(event)">
         <input type="hidden" id="editId" value="">
+        <div class="form-group gps-group">
+          <button type="button" class="btn-gps" onclick="getGPSLocation()">
+            <span class="gps-icon">📍</span> 获取当前定位
+          </button>
+          <span class="gps-status" id="gpsStatus"></span>
+          <input type="hidden" id="f_gps_lng" value="">
+          <input type="hidden" id="f_gps_lat" value="">
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label>区县 *</label>
@@ -957,6 +981,79 @@ function setDateValue(prefix, dateStr) {
   document.getElementById(prefix + '_y').value = parts[0] || '';
   document.getElementById(prefix + '_m').value = parts[1] || '';
   document.getElementById(prefix + '_d').value = parts[2] || '';
+}
+
+function getGPSLocation() {
+  const btn = document.querySelector('.btn-gps');
+  const status = document.getElementById('gpsStatus');
+
+  if (!navigator.geolocation) {
+    status.textContent = '浏览器不支持定位';
+    status.className = 'gps-status error';
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = '定位中...';
+  status.className = 'gps-status';
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lng = pos.coords.longitude.toFixed(6);
+      const lat = pos.coords.latitude.toFixed(6);
+      document.getElementById('f_gps_lng').value = lng;
+      document.getElementById('f_gps_lat').value = lat;
+
+      try {
+        const resp = await fetch(`https://restapi.amap.com/v3/geocode/regeo?key=90684e50f841f63404c0cf7ca7dc9789&location=${lng},${lat}`);
+        const data = await resp.json();
+        if (data.status === '1' && data.regeocode) {
+          const addr = data.regeocode.addressComponent;
+          const district = addr.district || '';
+          const township = addr.township || '';
+
+          const countySelect = document.getElementById('f_county');
+          for (let opt of countySelect.options) {
+            if (opt.value && district.includes(opt.value.replace(/[市县区]$/, ''))) {
+              countySelect.value = opt.value;
+              onCountyChange();
+              break;
+            }
+          }
+
+          setTimeout(() => {
+            const twSelect = document.getElementById('f_township');
+            for (let opt of twSelect.options) {
+              if (opt.value && township.includes(opt.value.replace(/[街道镇乡]$/, ''))) {
+                twSelect.value = opt.value;
+                onTownshipChange();
+                break;
+              }
+            }
+          }, 100);
+
+          status.textContent = `已定位：${district} ${township}`;
+          status.className = 'gps-status success';
+          btn.className = 'btn-gps success';
+          btn.innerHTML = '<span class="gps-icon">✓</span> 已定位';
+        } else {
+          status.textContent = `已获取坐标 (${lng}, ${lat})`;
+          status.className = 'gps-status success';
+        }
+      } catch(e) {
+        status.textContent = `已获取坐标 (${lng}, ${lat})`;
+        status.className = 'gps-status success';
+      }
+      btn.disabled = false;
+    },
+    (err) => {
+      btn.disabled = false;
+      const msgs = { 1: '请允许位置权限', 2: '定位不可用', 3: '定位超时' };
+      status.textContent = msgs[err.code] || '定位失败';
+      status.className = 'gps-status error';
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
 }
 
 function onCountyChange() {
@@ -1470,6 +1567,30 @@ function showDetail(id, event) {
   }
   document.getElementById('detailPhotos').innerHTML = photosHTML;
 
+  // 动态生成操作按钮（含导航）
+  let navLng, navLat, navName;
+  if (record.gps_lng && record.gps_lat) {
+    navLng = record.gps_lng;
+    navLat = record.gps_lat;
+    navName = `${record.township} ${record.village || ''}`.trim();
+  } else {
+    const tw = TOWNSHIPS[record.township];
+    if (record.village && tw && tw.villages && tw.villages[record.village]) {
+      [navLng, navLat] = tw.villages[record.village];
+      navName = record.village;
+    } else if (tw && tw.coord) {
+      [navLng, navLat] = tw.coord;
+      navName = record.township;
+    }
+  }
+  let actionsHTML = '';
+  if (navLng && navLat) {
+    actionsHTML += `<button class="btn-sm nav-btn" onclick="navigateTo(${navLng},${navLat},'${(navName||'').replace(/'/g,"\\'")}')">📍 导航到此</button>`;
+  }
+  actionsHTML += '<button class="btn-sm" onclick="editRecord()">补传照片</button>';
+  actionsHTML += '<button class="btn-sm danger" onclick="deleteRecord()">删除</button>';
+  document.getElementById('detailActions').innerHTML = actionsHTML;
+
   popup.classList.add('show');
   // Position
   const rect = popup.getBoundingClientRect();
@@ -1487,6 +1608,15 @@ function showDetail(id, event) {
   if (x < 10) x = 10; if (y < 10) y = 10;
   popup.style.left = x + 'px';
   popup.style.top = y + 'px';
+}
+
+function navigateTo(lng, lat, name) {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    window.location.href = `https://uri.amap.com/navigation?to=${lng},${lat},${encodeURIComponent(name)}&mode=car&coordinate=gaode`;
+  } else {
+    window.open(`https://www.amap.com/dir?to[lnglat]=${lng},${lat}&to[name]=${encodeURIComponent(name)}`, '_blank');
+  }
 }
 
 function closeDetail() {
@@ -1508,6 +1638,13 @@ function openAddModal() {
   beforeEl.classList.remove('has-file');
   beforeEl.querySelector('.hint').textContent = '点击拍照或选择图片';
   beforeEl.querySelector('.icon').textContent = '📷';
+  // 重置GPS状态
+  document.getElementById('f_gps_lng').value = '';
+  document.getElementById('f_gps_lat').value = '';
+  document.getElementById('gpsStatus').textContent = '';
+  document.getElementById('gpsStatus').className = 'gps-status';
+  const gpsBtn = document.querySelector('.btn-gps');
+  if (gpsBtn) { gpsBtn.className = 'btn-gps'; gpsBtn.innerHTML = '<span class="gps-icon">📍</span> 获取当前定位'; gpsBtn.disabled = false; }
   // 重置施用后多图
   afterPhotoFiles = [];
   renderAfterGrid();
@@ -1677,6 +1814,8 @@ async function submitForm(e) {
   formData.append('operator', document.getElementById('f_operator').value);
   formData.append('plant_area', document.getElementById('f_plant_area').value);
   formData.append('demo_area', document.getElementById('f_demo_area').value);
+  formData.append('gps_lng', document.getElementById('f_gps_lng').value);
+  formData.append('gps_lat', document.getElementById('f_gps_lat').value);
 
   const beforeFile = document.querySelector('#upload_before input').files[0];
   if (beforeFile) formData.append('photo_before', beforeFile);

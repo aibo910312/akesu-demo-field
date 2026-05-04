@@ -60,6 +60,8 @@ def init_db():
         ("deleted_at", "TEXT DEFAULT NULL"),
         ("plant_area", "TEXT DEFAULT ''"),
         ("demo_area", "TEXT DEFAULT ''"),
+        ("gps_lng", "TEXT DEFAULT ''"),
+        ("gps_lat", "TEXT DEFAULT ''"),
     ]:
         try:
             conn.execute(f"SELECT {col} FROM demo_fields LIMIT 1")
@@ -402,8 +404,8 @@ class Handler(SimpleHTTPRequestHandler):
             conn.execute("""
                 INSERT INTO demo_fields (id, township, village, crop, farmer_name, farmer_phone,
                     demo_product, demo_date, operator, photo_before, photo_after,
-                    plant_area, demo_area)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    plant_area, demo_area, gps_lng, gps_lat)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 record_id,
                 fields.get("township", ""),
@@ -418,6 +420,8 @@ class Handler(SimpleHTTPRequestHandler):
                 photo_after,
                 fields.get("plant_area", ""),
                 fields.get("demo_area", ""),
+                fields.get("gps_lng", ""),
+                fields.get("gps_lat", ""),
             ))
             conn.commit()
             row = conn.execute("SELECT * FROM demo_fields WHERE id=?", (record_id,)).fetchone()
