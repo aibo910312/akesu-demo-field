@@ -1,0 +1,1943 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>阿克苏地区 · 作物示范田一览图</title>
+<script src="./echarts.min.js"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --cyan: #00fff2;
+    --cyan-dim: rgba(0,255,242,0.28);
+    --blue: #4d9fff;
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.22);
+    --amber: #ffa502;
+    --amber-dim: rgba(255,165,2,0.22);
+    --red: #ff4757;
+    --purple: #a855f7;
+    --gold: #ffd700;
+    --lime: #84cc16;
+    --bg: #0c0c22;
+    --panel-bg: rgba(16,20,45,0.92);
+    --border: rgba(0,255,242,0.15);
+    --text: #e2e8f0;
+    --text-dim: #8b95a8;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      linear-gradient(rgba(0,255,242,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,242,0.015) 1px, transparent 1px);
+    background-size: 60px 60px;
+    z-index: 0;
+    animation: gridShift 20s linear infinite;
+  }
+  @keyframes gridShift { 0% { transform: translate(0,0); } 100% { transform: translate(60px,60px); } }
+
+  body::after {
+    content: '';
+    position: fixed; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.12; z-index: 9999; animation: scanLine 4s ease-in-out infinite; pointer-events: none;
+  }
+  @keyframes scanLine { 0% { top: -2px; } 100% { top: 100%; } }
+
+  /* ── Layout ── */
+  .container {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: auto 1fr;
+    height: 100vh; gap: 0;
+  }
+
+  /* ── Header ── */
+  .header {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(0,255,242,0.03) 0%, transparent 100%);
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo-hex {
+    width: 42px; height: 42px; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-hex::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    opacity: 0.9; animation: hexPulse 3s ease-in-out infinite;
+  }
+  .logo-hex span {
+    position: relative; z-index: 1;
+    font-family: 'Courier New', monospace; font-weight: 900; font-size: 10px;
+    color: var(--bg); letter-spacing: -1px;
+  }
+  @keyframes hexPulse { 0%,100% { opacity:0.9; filter:brightness(1); } 50% { opacity:1; filter:brightness(1.3); } }
+
+  .title-group h1 {
+    font-family: 'Microsoft YaHei', sans-serif;
+    font-weight: 700; font-size: 20px; letter-spacing: 3px;
+    background: linear-gradient(90deg, #fff 0%, var(--green) 50%, var(--cyan) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 20px rgba(34,197,94,0.3));
+  }
+  .title-group .subtitle {
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 5px; color: var(--text-dim); margin-top: 2px;
+  }
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .header-time {
+    font-family: 'Courier New', monospace; font-size: 13px;
+    color: var(--cyan); letter-spacing: 2px; opacity: 0.7;
+  }
+  .header-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); }
+  .status-dot { width:8px;height:8px;border-radius:50%;background:var(--green);animation:blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  .county-label { font-size: 13px; color: var(--text-dim); letter-spacing: 2px; }
+
+  /* ── Left Panel ── */
+  .left-panel {
+    padding: 16px; border-right: 1px solid var(--border);
+    overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+    background: linear-gradient(180deg, rgba(0,255,242,0.01) 0%, transparent 50%);
+  }
+  .panel-section {
+    background: var(--panel-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 14px; position: relative; overflow: hidden;
+  }
+  .panel-section::before {
+    content: ''; position: absolute; top:0;left:0;right:0; height:1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent); opacity: 0.4;
+  }
+  .section-label {
+    font-family: 'Courier New', monospace; font-size: 9px; letter-spacing: 3px;
+    color: var(--text-dim); text-transform: uppercase; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::before { content: '//'; color: var(--cyan); opacity: 0.4; }
+
+  /* ── Search ── */
+  .search-group { display: flex; flex-direction: column; gap: 8px; }
+  .search-group input, .search-group select {
+    width: 100%; padding: 8px 10px; border-radius: 4px;
+    border: 1px solid var(--border); background: rgba(0,0,0,0.3);
+    color: var(--text); font-size: 12px; font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .search-group input:focus { outline: none; border-color: var(--green); }
+  .search-row { display: flex; flex-direction: column; gap: 6px; }
+  .search-row label { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; display: block; }
+  .search-group > div > label { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; display: block; }
+  .btn-search {
+    width: 100%; padding: 7px; border: none; border-radius: 4px;
+    background: linear-gradient(135deg, rgba(34,197,94,0.3), rgba(0,255,242,0.2));
+    color: var(--green); font-size: 12px; font-weight: 600;
+    letter-spacing: 1px; cursor: pointer; transition: all 0.2s;
+    border: 1px solid rgba(34,197,94,0.3);
+  }
+  .btn-search:hover { background: linear-gradient(135deg, rgba(34,197,94,0.4), rgba(0,255,242,0.3)); }
+
+  /* ── Date Select Group ── */
+  .date-select-group { display: flex; gap: 4px; }
+  .date-select-group select {
+    width: auto; flex: 1; min-width: 0;
+    padding: 8px 2px; font-size: 13px;
+  }
+  .search-group .date-select-group select {
+    padding: 6px 2px; font-size: 11px;
+  }
+
+  /* ── Crop Tags ── */
+  .crop-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .crop-tag {
+    padding: 8px 14px; border-radius: 4px; cursor: pointer;
+    font-size: 13px; font-weight: 600; letter-spacing: 1px;
+    border: 1px solid var(--border); background: rgba(0,0,0,0.3);
+    color: var(--text-dim); transition: all 0.3s; user-select: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .crop-tag .icon { font-size: 16px; }
+  .crop-tag:hover { background: rgba(0,255,242,0.05); border-color: rgba(0,255,242,0.3); }
+  .crop-tag.active { color: #fff; }
+  .crop-tag.active[data-crop="棉花"] { background: rgba(255,255,255,0.18); border-color: #f0f0f0; color: #f0f0f0; }
+  .crop-tag.active[data-crop="小麦"] { background: rgba(255,215,0,0.18); border-color: var(--gold); color: var(--gold); }
+  .crop-tag.active[data-crop="玉米"] { background: rgba(255,165,2,0.18); border-color: var(--amber); color: var(--amber); }
+  .crop-tag.active[data-crop="红枣"] { background: rgba(255,71,87,0.18); border-color: var(--red); color: var(--red); }
+  .crop-tag.active[data-crop="苹果"] { background: rgba(34,197,94,0.18); border-color: var(--green); color: var(--green); }
+  .crop-tag.active[data-crop="香梨"] { background: rgba(132,204,22,0.18); border-color: var(--lime); color: var(--lime); }
+  .crop-tag.active[data-crop="核桃"] { background: rgba(168,85,247,0.18); border-color: var(--purple); color: var(--purple); }
+  .crop-tag.active[data-crop="孜然"] { background: rgba(77,159,255,0.18); border-color: var(--blue); color: var(--blue); }
+  .crop-tag.active[data-crop="辣椒"] { background: rgba(255,99,71,0.18); border-color: #ff6347; color: #ff6347; }
+  .crop-tag.active[data-crop="食葵"] { background: rgba(255,193,7,0.18); border-color: #ffc107; color: #ffc107; }
+  .crop-tag .count {
+    font-family: 'Courier New', monospace; font-size: 11px;
+    background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 2px;
+  }
+
+  /* ── Stats ── */
+  .big-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .big-stat {
+    text-align: center; padding: 10px 6px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: rgba(0,255,242,0.02);
+  }
+  .big-stat .value {
+    font-family: 'Courier New', monospace; font-size: 28px; font-weight: 700;
+    line-height: 1; margin-bottom: 3px;
+  }
+  .big-stat .label { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+  .big-stat.green .value { color: var(--green); text-shadow: 0 0 20px rgba(34,197,94,0.4); }
+  .big-stat.cyan .value { color: var(--cyan); text-shadow: 0 0 20px rgba(0,255,242,0.4); }
+  .big-stat.gold .value { color: var(--gold); text-shadow: 0 0 20px rgba(255,215,0,0.4); }
+  .big-stat.purple .value { color: var(--purple); text-shadow: 0 0 20px rgba(168,85,247,0.4); }
+
+  /* ── Record List ── */
+  .record-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+  .record-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 4px; border: 1px solid transparent;
+    cursor: pointer; transition: all 0.3s; font-size: 12px;
+  }
+  .record-item:hover { background: rgba(0,255,242,0.04); border-color: var(--border); }
+  .record-item .dot { width:6px;height:6px;border-radius:50%;flex-shrink:0; }
+  .record-item .township { color: var(--text); font-weight: 500; min-width: 55px; }
+  .record-item .farmer { color: var(--text-dim); flex: 1; }
+  .record-item .crop-badge {
+    font-size: 10px; padding: 1px 6px; border-radius: 2px;
+    background: rgba(255,255,255,0.06); color: var(--text-dim);
+  }
+
+  /* ── Map ── */
+  .map-area { position: relative; overflow: hidden; }
+  #mapChart { width: 100%; height: 100%; }
+  .corner { position:absolute;width:20px;height:20px;opacity:0.3;pointer-events:none; }
+  .corner-tl { top:8px;left:8px;border-top:2px solid var(--green);border-left:2px solid var(--green); }
+  .corner-tr { top:8px;right:8px;border-top:2px solid var(--green);border-right:2px solid var(--green); }
+  .corner-bl { bottom:8px;left:8px;border-bottom:2px solid var(--green);border-left:2px solid var(--green); }
+  .corner-br { bottom:8px;right:8px;border-bottom:2px solid var(--green);border-right:2px solid var(--green); }
+
+  /* ── FAB ── */
+  .fab {
+    position: fixed; bottom: 28px; right: 28px; z-index: 100;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    border: none; color: var(--bg); font-size: 28px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(34,197,94,0.4);
+    transition: all 0.3s;
+  }
+  .fab:hover { transform: scale(1.1); box-shadow: 0 6px 30px rgba(34,197,94,0.6); }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--panel-bg); border: 1px solid var(--border);
+    border-radius: 8px; width: 90%; max-width: 520px; max-height: 90vh;
+    overflow-y: auto; position: relative;
+    box-shadow: 0 0 40px rgba(0,255,242,0.08), 0 20px 60px rgba(0,0,0,0.6);
+    animation: modalIn 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes modalIn { 0%{opacity:0;transform:scale(0.95) translateY(10px);} 100%{opacity:1;transform:scale(1) translateY(0);} }
+  .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative;
+  }
+  .modal-header::before {
+    content:''; position:absolute; top:0;left:0;right:0; height:2px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+  }
+  .modal-header h3 { font-size: 16px; font-weight: 700; color: #fff; }
+  .modal-close {
+    width:28px;height:28px; background:none; border:1px solid var(--border);
+    border-radius:4px; color:var(--text-dim); cursor:pointer;
+    display:flex;align-items:center;justify-content:center; font-size:16px;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { border-color: var(--cyan); color: var(--cyan); }
+  .modal-body { padding: 20px; }
+
+  /* ── Form ── */
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block; font-size: 12px; color: var(--text-dim);
+    margin-bottom: 4px; letter-spacing: 1px;
+  }
+  .form-group select,
+  .form-group input,
+  .form-group textarea {
+    width: 100%; padding: 10px 12px; border-radius: 4px;
+    border: 1px solid var(--border); background: rgba(0,0,0,0.3);
+    color: var(--text); font-size: 14px; font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .form-group select:focus,
+  .form-group input:focus,
+  .form-group textarea:focus {
+    outline: none; border-color: var(--green);
+  }
+  .form-group select option { background: #1a1a3a; color: var(--text); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .photo-upload {
+    border: 2px dashed var(--border); border-radius: 6px; padding: 16px;
+    text-align: center; cursor: pointer; transition: all 0.3s;
+    position: relative; min-height: 80px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .photo-upload:hover { border-color: var(--green); background: rgba(34,197,94,0.04); }
+  .photo-upload input[type="file"] { position:absolute;inset:0;opacity:0;cursor:pointer; }
+  .photo-upload .icon { font-size: 24px; margin-bottom: 4px; }
+  .photo-upload .hint { font-size: 11px; color: var(--text-dim); }
+  .photo-upload.has-file { border-color: var(--green); border-style: solid; }
+  .photo-upload.has-file .icon { color: var(--green); }
+  /* 多图上传网格 */
+  .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .photo-grid-item {
+    position: relative; aspect-ratio: 1; border-radius: 4px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .photo-grid-item img { width:100%;height:100%;object-fit:cover; }
+  .photo-grid-item .photo-remove {
+    position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;
+    background:rgba(0,0,0,0.6);color:#fff;font-size:12px;line-height:18px;text-align:center;
+    cursor:pointer;z-index:1;
+  }
+  .photo-grid-item .photo-remove:hover { background:rgba(255,71,87,0.8); }
+  .photo-grid-add {
+    aspect-ratio: 1; border: 2px dashed var(--border); border-radius: 4px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    cursor:pointer;transition:all 0.3s;position:relative;
+  }
+  .photo-grid-add:hover { border-color: var(--green); background: rgba(34,197,94,0.04); }
+  .photo-grid-add input { position:absolute;inset:0;opacity:0;cursor:pointer; }
+  .photo-grid-add .add-icon { font-size:20px;color:var(--text-dim); }
+  .photo-grid-add .add-text { font-size:9px;color:var(--text-dim);margin-top:2px; }
+
+  .btn-submit {
+    width: 100%; padding: 12px; border: none; border-radius: 4px;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    color: var(--bg); font-size: 15px; font-weight: 700;
+    letter-spacing: 2px; cursor: pointer; transition: all 0.3s;
+    margin-top: 8px;
+  }
+  .btn-submit:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* ── Detail Popup ── */
+  .detail-popup {
+    display: none; position: fixed; z-index: 600;
+    min-width: 340px; max-width: 440px;
+    background: rgba(6,6,20,0.95); border: 1px solid rgba(34,197,94,0.25);
+    border-radius: 8px; overflow: hidden;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 0 30px rgba(34,197,94,0.08), 0 20px 60px rgba(0,0,0,0.6);
+    animation: popIn 0.25s cubic-bezier(0.16,1,0.3,1);
+  }
+  .detail-popup.show { display: block; }
+  @keyframes popIn { 0%{opacity:0;transform:scale(0.95) translateY(4px);} 100%{opacity:1;transform:scale(1) translateY(0);} }
+
+  .detail-header {
+    padding: 14px 18px 10px; border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .detail-header::before {
+    content:''; position:absolute; top:0;left:0;right:0; height:2px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+  }
+  .detail-header .area { font-size:10px;font-family:'Orbitron',monospace;letter-spacing:2px;color:var(--text-dim);margin-bottom:4px; }
+  .detail-header .farmer-name { font-size:16px;font-weight:700;color:#fff; }
+  .detail-header .crop-badge-lg {
+    display:inline-block;margin-top:6px;padding:2px 10px;border-radius:2px;
+    font-size:11px;font-weight:600;letter-spacing:1px;
+    background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,0.2);
+  }
+  .detail-close {
+    position:absolute;top:10px;right:12px;width:24px;height:24px;
+    background:none;border:1px solid var(--border);border-radius:2px;
+    color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;
+    font-size:14px;transition:all 0.2s;
+  }
+  .detail-close:hover { border-color:var(--green);color:var(--green); }
+  .detail-body { padding: 14px 18px 16px; }
+  .detail-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+  .detail-field .f-label { font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:2px; }
+  .detail-field .f-value { font-size:13px;font-weight:500;color:#fff; }
+  .detail-field .f-value.mono { font-family:'Orbitron',monospace;color:var(--cyan); }
+
+  .detail-photos {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .detail-photos h4 { font-size:12px;color:var(--text-dim);margin-bottom:8px;letter-spacing:1px; }
+  .photos-compare { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+  .photo-card { text-align:center; }
+  .photo-card img {
+    width:100%;border-radius:4px;border:1px solid var(--border);
+    max-height:160px;object-fit:cover;
+  }
+  .photo-card .photo-label {
+    font-size:10px;color:var(--text-dim);margin-top:4px;letter-spacing:1px;
+  }
+  .no-photo { color:var(--text-dim);font-size:12px;padding:20px;text-align:center; }
+
+  /* 图片全屏查看器 */
+  .photo-viewer {
+    display:none;position:fixed;inset:0;z-index:20000;
+    background:rgba(0,0,0,0.92);
+    flex-direction:column;align-items:center;justify-content:center;
+  }
+  .photo-viewer.show { display:flex; }
+  .photo-viewer img {
+    max-width:92vw;max-height:80vh;object-fit:contain;border-radius:4px;
+    user-select:none;-webkit-user-select:none;
+  }
+  .photo-viewer .pv-close {
+    position:absolute;top:12px;right:16px;width:36px;height:36px;border-radius:50%;
+    background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:22px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .photo-viewer .pv-close:hover { background:rgba(255,255,255,0.3); }
+  .photo-viewer .pv-nav {
+    position:absolute;top:50%;width:40px;height:40px;border-radius:50%;
+    background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:20px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transform:translateY(-50%);
+  }
+  .photo-viewer .pv-nav:hover { background:rgba(255,255,255,0.25); }
+  .photo-viewer .pv-prev { left:12px; }
+  .photo-viewer .pv-next { right:12px; }
+  .photo-viewer .pv-counter {
+    margin-top:12px;font-size:13px;color:rgba(255,255,255,0.6);
+  }
+
+  .detail-actions {
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px;
+  }
+  .btn-sm {
+    padding: 6px 14px; border-radius: 4px; font-size: 12px;
+    cursor: pointer; transition: all 0.2s; border: 1px solid var(--border);
+    background: rgba(0,0,0,0.3); color: var(--text-dim);
+  }
+  .btn-sm:hover { border-color: var(--cyan); color: var(--cyan); }
+  .btn-sm.danger:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── Export button ── */
+  .btn-export {
+    padding: 6px 12px; border-radius: 4px; font-size: 11px;
+    cursor: pointer; border: 1px solid var(--border);
+    background: rgba(0,0,0,0.3); color: var(--text-dim);
+    transition: all 0.2s; letter-spacing: 1px;
+  }
+  .btn-export:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .container { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+    .left-panel {
+      border-right:none; border-bottom:1px solid var(--border);
+      max-height: 180px; padding: 10px; gap: 8px;
+      flex-direction: row; flex-wrap: wrap; overflow-x: auto;
+    }
+    .left-panel .panel-section { min-width:160px; flex:1; padding:10px; }
+    .left-panel .panel-section:last-child { display: none; }
+    .header { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+    .title-group h1 { font-size: 14px; letter-spacing: 1px; }
+    .fab { bottom: 16px; right: 16px; width: 48px; height: 48px; font-size: 24px; }
+    .detail-popup { min-width: 280px; max-width: 92vw; }
+    .modal { width: 95%; max-height: 85vh; }
+  }
+
+  /* ── Trash Button & Panel ── */
+  .btn-trash {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; padding: 10px 14px; border-radius: 4px;
+    border: 1px solid var(--border); background: rgba(0,0,0,0.3);
+    color: var(--text-dim); font-size: 13px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-trash:hover { border-color: var(--red); color: var(--red); }
+  .trash-badge {
+    background: var(--red); color: #fff; font-size: 11px;
+    padding: 1px 7px; border-radius: 10px; font-weight: 700;
+  }
+
+  .trash-panel {
+    display: none; position: fixed; left: 300px; top: 60px; bottom: 0;
+    width: 360px; z-index: 400;
+    background: rgba(6,6,20,0.97); border-right: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    animation: slideIn 0.25s ease-out;
+  }
+  .trash-panel.show { display: flex; flex-direction: column; }
+  @keyframes slideIn { 0%{transform:translateX(-20px);opacity:0;} 100%{transform:translateX(0);opacity:1;} }
+
+  .trash-panel-header {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 15px; font-weight: 700; color: var(--red);
+  }
+  .trash-panel-body { flex: 1; overflow-y: auto; padding: 10px; }
+
+  .trash-item {
+    padding: 10px 12px; border-radius: 4px; margin-bottom: 6px;
+    border: 1px solid var(--border); background: rgba(255,71,87,0.04);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .trash-info { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+  .trash-township { color: var(--text); font-weight: 600; }
+  .trash-farmer { color: var(--text-dim); }
+  .trash-crop { font-size: 10px; padding: 1px 6px; border-radius: 2px; background: rgba(255,255,255,0.06); color: var(--text-dim); }
+  .trash-time { width: 100%; font-size: 10px; color: var(--text-dim); opacity: 0.7; }
+  .trash-actions { display: flex; gap: 6px; }
+
+  @media (max-width: 768px) {
+    .trash-panel { left: 0; width: 100%; top: 0; }
+  }
+
+  /* ── Loading ── */
+  .loading-screen {
+    position:fixed;inset:0;background:var(--bg);z-index:10000;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transition:opacity 0.6s;
+  }
+  .loading-screen.hidden { opacity:0;pointer-events:none;display:none; }
+  .loading-bar { width:200px;height:2px;background:rgba(34,197,94,0.1);border-radius:1px;overflow:hidden;margin-top:20px; }
+  .loading-bar-inner { height:100%;background:var(--green);width:0%;animation:loadBar 1.5s ease-out forwards;box-shadow:0 0 10px var(--green); }
+  @keyframes loadBar { to { width:100%; } }
+  .loading-text { font-family:'Orbitron',monospace;font-size:11px;letter-spacing:4px;color:var(--text-dim);margin-top:12px; }
+  /* ── Login Overlay ── */
+  .login-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .login-overlay.hidden { display: none; }
+  .login-card {
+    width: 340px; padding: 30px; border-radius: 8px;
+    background: rgba(20,20,40,0.95); border: 1px solid rgba(34,197,94,0.3);
+  }
+  .login-header h2 { text-align: center; color: #e0e0e0; margin-bottom: 20px; font-size: 18px; }
+  .login-form .form-group { margin-bottom: 14px; }
+  .login-form .form-group label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  .login-form .form-group input {
+    width: 100%; padding: 10px; border-radius: 4px;
+    border: 1px solid var(--border); background: rgba(0,0,0,0.3);
+    color: var(--text); font-size: 14px;
+  }
+  .login-form .form-group input:focus { outline: none; border-color: var(--green); }
+  .login-error { color: #ff4757; font-size: 12px; min-height: 20px; margin: 8px 0; }
+  .btn-login {
+    width: 100%; padding: 10px; border: none; border-radius: 4px;
+    background: linear-gradient(135deg, rgba(34,197,94,0.8), rgba(0,255,242,0.6));
+    color: #0a0a1a; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .btn-login:hover { filter: brightness(1.1); }
+  .btn-guest {
+    width: 100%; padding: 9px; margin-top: 8px; border-radius: 4px; cursor: pointer;
+    background: transparent; border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.5); font-size: 13px;
+  }
+  .btn-guest:hover { border-color: rgba(255,255,255,0.4); color: rgba(255,255,255,0.7); }
+  .btn-logout {
+    padding: 5px 12px; border-radius: 4px; cursor: pointer;
+    border: 1px solid rgba(255,71,87,0.4); background: rgba(255,71,87,0.1);
+    color: var(--red); font-size: 11px; letter-spacing: 1px;
+  }
+  .btn-logout:hover { background: rgba(255,71,87,0.2); }
+</style>
+</head>
+<body>
+
+<!-- Login Overlay -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-header">
+      <h2>阿克苏地区 · 作物示范田一览图</h2>
+    </div>
+    <div class="login-form" id="loginFormPanel">
+      <div class="form-group">
+        <label>账号</label>
+        <input type="text" id="login_phone" placeholder="请输入账号">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="login_password" placeholder="请输入密码">
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button class="btn-login" id="loginBtn" onclick="doLogin()">登 录</button>
+      <button class="btn-guest" onclick="guestLogin()">游客访问</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="logo-hex" style="width:64px;height:64px;">
+    <span style="font-size:10px;">示范田</span>
+  </div>
+  <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+  <div class="loading-text">AKESU DEMO FIELD MAP · LOADING</div>
+</div>
+
+<!-- Detail Popup -->
+<div class="detail-popup" id="detailPopup">
+  <div class="detail-header">
+    <button class="detail-close" onclick="closeDetail()">&times;</button>
+    <div class="area" id="detailArea"></div>
+    <div class="farmer-name" id="detailFarmer"></div>
+    <div class="crop-badge-lg" id="detailCropBadge"></div>
+  </div>
+  <div class="detail-body">
+    <div class="detail-grid" id="detailGrid"></div>
+    <div class="detail-photos" id="detailPhotos"></div>
+    <div class="detail-actions" id="detailActions">
+      <button class="btn-sm" onclick="editRecord()">补传照片</button>
+      <button class="btn-sm danger" onclick="deleteRecord()">删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Photo Viewer -->
+<div class="photo-viewer" id="photoViewer" onclick="if(event.target===this)closeViewer()">
+  <button class="pv-close" onclick="closeViewer()">&times;</button>
+  <button class="pv-nav pv-prev" onclick="viewerNav(-1)">&#8249;</button>
+  <img id="pvImage" src="">
+  <button class="pv-nav pv-next" onclick="viewerNav(1)">&#8250;</button>
+  <div class="pv-counter" id="pvCounter"></div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">添加示范田记录</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="addForm" onsubmit="submitForm(event)">
+        <input type="hidden" id="editId" value="">
+        <div class="form-row">
+          <div class="form-group">
+            <label>区县 *</label>
+            <select id="f_county" required onchange="onCountyChange()">
+              <option value="">选择区县</option>
+              <option value="阿克苏市">阿克苏市</option>
+              <option value="库车市">库车市</option>
+              <option value="温宿县">温宿县</option>
+              <option value="沙雅县">沙雅县</option>
+              <option value="新和县">新和县</option>
+              <option value="拜城县">拜城县</option>
+              <option value="乌什县">乌什县</option>
+              <option value="阿瓦提县">阿瓦提县</option>
+              <option value="柯坪县">柯坪县</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>乡镇 *</label>
+            <select id="f_township" required onchange="onTownshipChange()"></select>
+          </div>
+          <div class="form-group">
+            <label>村</label>
+            <select id="f_village"><option value="">选择村（可不选）</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>种植作物 *</label>
+            <select id="f_crop" required>
+              <option value="">选择作物</option>
+              <option value="棉花">棉花</option>
+              <option value="小麦">小麦</option>
+              <option value="玉米">玉米</option>
+              <option value="红枣">红枣</option>
+              <option value="苹果">苹果</option>
+              <option value="香梨">香梨</option>
+              <option value="核桃">核桃</option>
+              <option value="孜然">孜然</option>
+              <option value="辣椒">辣椒</option>
+              <option value="食葵">食葵</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>示范产品 *</label>
+            <input type="text" id="f_product" placeholder="产品名称" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>农户姓名</label>
+            <input type="text" id="f_farmer" placeholder="姓名">
+          </div>
+          <div class="form-group">
+            <label>农户电话</label>
+            <input type="tel" id="f_phone" placeholder="电话">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>农户种植面积（亩）</label>
+            <input type="text" id="f_plant_area" placeholder="如 50">
+          </div>
+          <div class="form-group">
+            <label>示范使用面积（亩）</label>
+            <input type="text" id="f_demo_area" placeholder="如 10">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>示范时间</label>
+            <div class="date-select-group"><select id="f_date_y"><option value="">年</option></select><select id="f_date_m"><option value="">月</option></select><select id="f_date_d"><option value="">日</option></select></div>
+          </div>
+          <div class="form-group">
+            <label>操作人</label>
+            <input type="text" id="f_operator" placeholder="业务员姓名">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>效果照片 - 施用前</label>
+            <div class="photo-upload" id="upload_before">
+              <div class="icon">📷</div>
+              <div class="hint">点击拍照或选择图片</div>
+              <input type="file" accept="image/*" onchange="handlePhoto(this,'before')">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>效果照片 - 施用后（最多9张）</label>
+            <div class="photo-grid" id="afterPhotoGrid">
+              <div class="photo-grid-add" id="afterPhotoAdd">
+                <div class="add-icon">+</div>
+                <div class="add-text">添加照片</div>
+                <input type="file" accept="image/*" multiple onchange="addAfterPhotos(this)">
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn-submit" id="submitBtn">提交记录</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Main Layout -->
+<div class="container">
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-hex"><span>示范田</span></div>
+      <div class="title-group">
+        <h1>阿克苏地区 · 作物示范田一览图</h1>
+        <div class="subtitle">AKESU · CROP DEMO FIELD MAP</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="county-label">新疆阿克苏地区</div>
+      <button class="btn-export" onclick="exportCSV()">导出CSV</button>
+      <div class="header-status"><div class="status-dot"></div>LIVE</div>
+      <div class="header-time" id="headerTime"></div>
+      <button class="btn-logout" onclick="doLogout()">退出登录</button>
+    </div>
+  </header>
+
+  <aside class="left-panel">
+    <!-- Search -->
+    <div class="panel-section">
+      <div class="section-label">SEARCH</div>
+      <div class="search-group">
+        <div>
+          <label>乡镇</label>
+          <select id="searchTownship"><option value="">全部乡镇</option></select>
+        </div>
+        <div>
+          <label>产品</label>
+          <input type="text" id="searchProduct" placeholder="示范产品名称">
+        </div>
+        <div>
+          <label>农户/操作人</label>
+          <input type="text" id="searchKeyword" placeholder="姓名关键词">
+        </div>
+        <div>
+          <label>开始日期</label>
+          <div class="date-select-group"><select id="searchDateFrom_y"><option value="">年</option></select><select id="searchDateFrom_m"><option value="">月</option></select><select id="searchDateFrom_d"><option value="">日</option></select></div>
+        </div>
+        <div>
+          <label>结束日期</label>
+          <div class="date-select-group"><select id="searchDateTo_y"><option value="">年</option></select><select id="searchDateTo_m"><option value="">月</option></select><select id="searchDateTo_d"><option value="">日</option></select></div>
+        </div>
+        <button class="btn-search" onclick="doSearch()">筛 选</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">OVERVIEW</div>
+      <div class="big-stats">
+        <div class="big-stat green"><div class="value" id="statTotal">0</div><div class="label">示范田总数</div></div>
+        <div class="big-stat cyan"><div class="value" id="statTownships">0</div><div class="label">覆盖乡镇</div></div>
+        <div class="big-stat gold"><div class="value" id="statProducts">0</div><div class="label">示范产品数</div></div>
+        <div class="big-stat purple"><div class="value" id="statPhotos">0</div><div class="label">效果对比</div></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">CROPS</div>
+      <div class="crop-tags" id="cropTags">
+        <div class="crop-tag active" data-crop="all" onclick="filterCrop('all')">
+          <span class="icon">🌾</span>全部<span class="count" id="countAll">0</span>
+        </div>
+        <div class="crop-tag" data-crop="棉花" onclick="filterCrop('棉花')">
+          <span class="icon">🌿</span>棉花<span class="count" id="count棉花">0</span>
+        </div>
+        <div class="crop-tag" data-crop="小麦" onclick="filterCrop('小麦')">
+          <span class="icon">🌾</span>小麦<span class="count" id="count小麦">0</span>
+        </div>
+        <div class="crop-tag" data-crop="玉米" onclick="filterCrop('玉米')">
+          <span class="icon">🌽</span>玉米<span class="count" id="count玉米">0</span>
+        </div>
+        <div class="crop-tag" data-crop="红枣" onclick="filterCrop('红枣')">
+          <span class="icon">🫒</span>红枣<span class="count" id="count红枣">0</span>
+        </div>
+        <div class="crop-tag" data-crop="苹果" onclick="filterCrop('苹果')">
+          <span class="icon">🍎</span>苹果<span class="count" id="count苹果">0</span>
+        </div>
+        <div class="crop-tag" data-crop="香梨" onclick="filterCrop('香梨')">
+          <span class="icon">🍐</span>香梨<span class="count" id="count香梨">0</span>
+        </div>
+        <div class="crop-tag" data-crop="核桃" onclick="filterCrop('核桃')">
+          <span class="icon">🥜</span>核桃<span class="count" id="count核桃">0</span>
+        </div>
+        <div class="crop-tag" data-crop="孜然" onclick="filterCrop('孜然')">
+          <span class="icon">🌱</span>孜然<span class="count" id="count孜然">0</span>
+        </div>
+        <div class="crop-tag" data-crop="辣椒" onclick="filterCrop('辣椒')">
+          <span class="icon">🌶️</span>辣椒<span class="count" id="count辣椒">0</span>
+        </div>
+        <div class="crop-tag" data-crop="食葵" onclick="filterCrop('食葵')">
+          <span class="icon">🌻</span>食葵<span class="count" id="count食葵">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section" style="flex:1;">
+      <div class="section-label">RECORDS</div>
+      <div class="record-list" id="recordList"></div>
+    </div>
+
+    <button class="btn-trash" onclick="toggleTrash()">
+      <span>&#128465; 回收站</span>
+      <span class="trash-badge" id="trashCount" style="display:none;">0</span>
+    </button>
+  </aside>
+
+  <!-- 回收站面板 -->
+  <div class="trash-panel" id="trashPanel">
+    <div class="trash-panel-header">
+      <span>&#128465; 回收站</span>
+      <button class="detail-close" onclick="toggleTrash()">&times;</button>
+    </div>
+    <div class="trash-panel-body" id="trashList"></div>
+  </div>
+
+  <div class="map-area">
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+    <div id="mapChart"></div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openAddModal()" title="添加示范田记录">+</button>
+
+<script>
+// ═══════════════════════════════════════════
+// 阿克苏地区各县市乡镇数据（从 townships.json 动态加载）
+// ═══════════════════════════════════════════
+let TOWNSHIPS = {};
+let chart = null;
+let allRecords = [];
+let currentCrop = 'all';
+const CROP_COLORS = {
+  "棉花": { hex: "#f0f0f0", dim: "rgba(255,255,255,0.18)" },
+  "小麦": { hex: "#ffd700", dim: "rgba(255,215,0,0.18)" },
+  "玉米": { hex: "#ffa502", dim: "rgba(255,165,2,0.18)" },
+  "红枣": { hex: "#ff4757", dim: "rgba(255,71,87,0.18)" },
+  "苹果": { hex: "#22c55e", dim: "rgba(34,197,94,0.18)" },
+  "香梨": { hex: "#84cc16", dim: "rgba(132,204,22,0.18)" },
+  "核桃": { hex: "#a855f7", dim: "rgba(168,85,247,0.18)" },
+  "孜然": { hex: "#4d9fff", dim: "rgba(77,159,255,0.18)" },
+  "辣椒": { hex: "#ff6347", dim: "rgba(255,99,71,0.18)" },
+  "食葵": { hex: "#ffc107", dim: "rgba(255,193,7,0.18)" },
+};
+
+const COUNTY_TOWNSHIPS = {
+  "阿克苏市": ["栏杆街道","英巴扎街道","红桥街道","新城街道","南城街道","柯柯牙街道","多浪街道","喀勒塔勒镇","阿依库勒镇","依干其乡","拜什吐格曼乡","托普鲁克乡","库木巴什乡"],
+  "库车市": ["热斯坦街道","萨克萨克街道","新城街道","东城街道","乌恰街道","伊西哈拉镇","乌尊镇","牙哈镇","齐满镇","哈尼喀塔木乡","阿拉哈格镇","墩阔坦镇","雅克拉镇","阿克吾斯塘乡","比西巴格乡","玉奇吾斯塘乡","塔里木乡"],
+  "温宿县": ["温宿镇","吐木秀克镇","克孜勒镇","阿热勒镇","佳木镇","托乎拉乡","恰格拉克乡","古勒阿瓦提乡","博孜墩柯尔克孜族乡","柯柯牙管理区"],
+  "沙雅县": ["沙雅镇","托依堡勒迪镇","红旗镇","英买力镇","古勒巴格镇","海楼镇","努尔巴格乡","塔里木乡"],
+  "新和县": ["新和镇","尤鲁都斯巴格镇","依其艾日克镇","排先拜巴扎乡","塔什艾日克镇","玉奇喀特镇","渭干乡","塔木托格拉克乡"],
+  "拜城县": ["拜城镇","铁热克镇","黑英山乡","赛里木镇","克孜尔乡","康其乡","布隆乡","亚吐尔乡","托克逊乡","大桥乡","老虎台乡"],
+  "乌什县": ["乌什镇","阿合雅镇","阿克托海依乡","亚科瑞克乡","阿恰塔格乡","依麻木镇","英阿瓦提乡","亚曼苏柯尔克孜族乡","奥特贝希乡"],
+  "阿瓦提县": ["阿瓦提镇","乌鲁却勒镇","拜什艾日克镇","阿依巴格乡","塔木托格拉克乡","英艾日克乡","多浪乡","巴格托格拉克乡"],
+  "柯坪县": ["柯坪镇","盖孜力克镇","玉尔其乡","阿恰勒镇","启浪乡"],
+};
+
+function initTownshipSelect() {
+  // 搜索栏：全部乡镇
+  const searchSel = document.getElementById('searchTownship');
+  Object.keys(TOWNSHIPS).sort().forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    searchSel.appendChild(opt);
+  });
+  // 表单乡镇下拉初始为空，等选区县后填充
+  document.getElementById('f_township').innerHTML = '<option value="">先选区县</option>';
+}
+
+function initDateSelects() {
+  const prefixes = ['searchDateFrom', 'searchDateTo', 'f_date'];
+  const now = new Date();
+  prefixes.forEach(p => {
+    const yEl = document.getElementById(p + '_y');
+    const mEl = document.getElementById(p + '_m');
+    const dEl = document.getElementById(p + '_d');
+    if (!yEl) return;
+    for (let y = now.getFullYear(); y >= 2020; y--) {
+      const o = document.createElement('option'); o.value = y; o.textContent = y;
+      yEl.appendChild(o);
+    }
+    for (let m = 1; m <= 12; m++) {
+      const o = document.createElement('option'); o.value = String(m).padStart(2,'0'); o.textContent = m + '月';
+      mEl.appendChild(o);
+    }
+    for (let d = 1; d <= 31; d++) {
+      const o = document.createElement('option'); o.value = String(d).padStart(2,'0'); o.textContent = d + '日';
+      dEl.appendChild(o);
+    }
+  });
+}
+
+function getDateValue(prefix) {
+  const y = document.getElementById(prefix + '_y').value;
+  const m = document.getElementById(prefix + '_m').value;
+  const d = document.getElementById(prefix + '_d').value;
+  if (!y) return '';
+  return y + '-' + (m || '01') + '-' + (d || '01');
+}
+
+function setDateValue(prefix, dateStr) {
+  if (!dateStr) {
+    document.getElementById(prefix + '_y').value = '';
+    document.getElementById(prefix + '_m').value = '';
+    document.getElementById(prefix + '_d').value = '';
+    return;
+  }
+  const parts = dateStr.split('-');
+  document.getElementById(prefix + '_y').value = parts[0] || '';
+  document.getElementById(prefix + '_m').value = parts[1] || '';
+  document.getElementById(prefix + '_d').value = parts[2] || '';
+}
+
+function onCountyChange() {
+  const county = document.getElementById('f_county').value;
+  const sel = document.getElementById('f_township');
+  sel.innerHTML = '<option value="">选择乡镇</option>';
+  document.getElementById('f_village').innerHTML = '<option value="">选择村（可不选）</option>';
+  if (county && COUNTY_TOWNSHIPS[county]) {
+    COUNTY_TOWNSHIPS[county].forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+function onTownshipChange() {
+  const township = document.getElementById('f_township').value;
+  const vsel = document.getElementById('f_village');
+  vsel.innerHTML = '<option value="">选择村（可不选）</option>';
+  if (township && TOWNSHIPS[township] && TOWNSHIPS[township].villages) {
+    Object.keys(TOWNSHIPS[township].villages).sort().forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v; opt.textContent = v;
+      vsel.appendChild(opt);
+    });
+  }
+}
+
+// ═══════════════════════════════════════════
+// 登录认证（localStorage key 按路径隔离，避免多区域共用域名时冲突）
+// ═══════════════════════════════════════════
+const _SK = (window.location.pathname.split('/').filter(Boolean)[0] || 'default') + '_';
+let authToken = localStorage.getItem(_SK + 'auth_token') || '';
+let authUser = localStorage.getItem(_SK + 'auth_user') || '';
+let authRole = localStorage.getItem(_SK + 'auth_role') || '';
+
+function authHeaders() {
+  const h = {};
+  if (authToken) h['Authorization'] = 'Bearer ' + authToken;
+  return h;
+}
+
+function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign(authHeaders(), opts.headers || {});
+  return fetch(url, opts);
+}
+
+// ═══════════════════════════════════════════
+// API 调用
+// ═══════════════════════════════════════════
+const API = window.location.href.replace(/\/+$/, '').replace(/\/index\.html$/, '');
+
+function buildSearchParams() {
+  const params = new URLSearchParams();
+  const q = document.getElementById('searchKeyword').value.trim();
+  const township = document.getElementById('searchTownship').value;
+  const product = document.getElementById('searchProduct').value.trim();
+  const dateFrom = getDateValue('searchDateFrom');
+  const dateTo = getDateValue('searchDateTo');
+  if (q) params.set('q', q);
+  if (township) params.set('township', township);
+  if (product) params.set('product', product);
+  if (currentCrop !== 'all') params.set('crop', currentCrop);
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo) params.set('date_to', dateTo);
+  return params.toString();
+}
+
+async function loadRecords() {
+  try {
+    const qs = buildSearchParams();
+    const url = `${API}/api/fields` + (qs ? '?' + qs : '');
+    console.log('[loadRecords] fetching:', url);
+    const r = await authFetch(url);
+    console.log('[loadRecords] status:', r.status);
+    allRecords = await r.json();
+    console.log('[loadRecords] got', allRecords.length, 'records');
+  } catch(e) {
+    console.error('[loadRecords] 加载数据失败:', e);
+    allRecords = [];
+  }
+  updateUI();
+}
+
+function doSearch() {
+  loadRecords();
+}
+
+async function createRecord(formData) {
+  const r = await authFetch(`${API}/api/fields`, { method: 'POST', body: formData });
+  return await r.json();
+}
+
+async function updateRecord(id, formData) {
+  const r = await authFetch(`${API}/api/fields/${id}`, { method: 'PUT', body: formData });
+  return await r.json();
+}
+
+async function removeRecord(id) {
+  const r = await authFetch(`${API}/api/fields/${id}`, { method: 'DELETE' });
+  return await r.json();
+}
+
+// ═══════════════════════════════════════════
+// UI 更新
+// ═══════════════════════════════════════════
+function updateUI() {
+  updateStats();
+  updateCropCounts();
+  updateRecordList();
+  updateMap();
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = allRecords.length;
+  const townships = new Set(allRecords.map(r => r.township));
+  document.getElementById('statTownships').textContent = townships.size;
+  const products = new Set(allRecords.map(r => r.demo_product).filter(Boolean));
+  document.getElementById('statProducts').textContent = products.size;
+  const photos = allRecords.filter(r => r.photo_before && r.photo_after).length;
+  document.getElementById('statPhotos').textContent = photos;
+}
+
+function updateCropCounts() {
+  document.getElementById('countAll').textContent = allRecords.length;
+  for (const crop of Object.keys(CROP_COLORS)) {
+    const count = allRecords.filter(r => r.crop === crop).length;
+    const el = document.getElementById('count' + crop);
+    if (el) el.textContent = count;
+  }
+}
+
+function updateRecordList() {
+  const list = document.getElementById('recordList');
+  const filtered = currentCrop === 'all' ? allRecords : allRecords.filter(r => r.crop === currentCrop);
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:10px;text-align:center;">暂无记录</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(r => {
+    const color = (CROP_COLORS[r.crop] && CROP_COLORS[r.crop].hex) || '#888';
+    return `<div class="record-item" onclick="showDetail('${r.id}')">
+      <span class="dot" style="background:${color};box-shadow:0 0 4px ${color};"></span>
+      <span class="township">${r.township}</span>
+      <span class="farmer">${r.farmer_name || '未填'}</span>
+      <span class="crop-badge">${r.crop}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// 作物筛选
+// ═══════════════════════════════════════════
+function filterCrop(crop) {
+  currentCrop = crop;
+  document.querySelectorAll('.crop-tag').forEach(el => {
+    el.classList.toggle('active', el.dataset.crop === crop);
+  });
+  loadRecords();
+}
+
+// ═══════════════════════════════════════════
+// 地图
+// ═══════════════════════════════════════════
+let mapZoom = 1.0;
+function initMap(geoJson) {
+  chart = echarts.init(document.getElementById('mapChart'));
+  echarts.registerMap('akesu', geoJson);
+  updateMap();
+  window.addEventListener('resize', () => chart.resize());
+  chart.on('georoam', function(params) {
+    if (params.zoom) {
+      mapZoom = chart.getOption().geo[0].zoom;
+      chart.setOption({
+        series: [
+          { symbolSize: Math.max(4, 8 * mapZoom) },
+          { symbolSize: Math.max(2, 4 * mapZoom) },
+          { symbolSize: Math.max(14, 22 * mapZoom) },
+          { symbolSize: 0 },
+        ]
+      });
+    }
+  });
+}
+
+// 红旗 SVG path（用于有示范田的乡镇）
+const FLAG_SVG = 'path://M4,0 L4,20 M4,0 L16,4 L16,10 L4,6';
+
+function updateMap() {
+  if (!chart) return;
+  const filtered = currentCrop === 'all' ? allRecords : allRecords.filter(r => r.crop === currentCrop);
+
+  // 按乡镇聚合（用于乡镇标签高亮）
+  const townshipGroups = {};
+  filtered.forEach(r => {
+    if (!townshipGroups[r.township]) townshipGroups[r.township] = [];
+    townshipGroups[r.township].push(r);
+  });
+
+  // 按「乡镇+村」聚合（红旗精准到村）
+  const villageGroups = {};
+  filtered.forEach(r => {
+    const key = r.village ? `${r.township}|${r.village}` : r.township;
+    if (!villageGroups[key]) villageGroups[key] = { township: r.township, village: r.village, records: [] };
+    villageGroups[key].records.push(r);
+  });
+
+  // 根据乡镇+村名查找村级坐标，找不到则退回乡镇坐标
+  function getVillageCoord(township, village) {
+    var tw = TOWNSHIPS[township];
+    if (village && tw && tw.villages && tw.villages[village]) {
+      return tw.villages[village];
+    }
+    return tw && tw.coord;
+  }
+
+  // 系列1：所有乡镇名称标注（静态小圆点 + 名字）
+  const allTownshipLabels = Object.entries(TOWNSHIPS).map(([name, twData]) => {
+    const coord = twData.coord;
+    const hasRecords = townshipGroups[name];
+    return {
+      name: name,
+      value: [...coord, 0],
+      itemStyle: {
+        color: hasRecords ? 'rgba(34,197,94,0.6)' : 'rgba(255,255,255,0.15)',
+      },
+      label: {
+        show: true,
+        formatter: name.replace(/(街道|镇)$/, ''),
+        position: 'right',
+        distance: 4,
+        color: hasRecords ? 'rgba(34,197,94,0.85)' : 'rgba(255,255,255,0.35)',
+        fontSize: hasRecords ? 11 : 10,
+        fontWeight: hasRecords ? 600 : 400,
+        textShadowColor: 'rgba(0,0,0,0.9)',
+        textShadowBlur: 3,
+      }
+    };
+  });
+
+  // 系列2：有示范田的村 → 红旗标记（带光效动画）
+  const flagData = Object.entries(villageGroups).map(([key, group]) => {
+    const coord = getVillageCoord(group.township, group.village);
+    if (!coord) return null;
+    return {
+      name: key,
+      value: [...coord, group.records.length],
+      itemStyle: { color: '#ff4757' },
+      records: group.records,
+    };
+  }).filter(Boolean);
+
+  // 系列3：有示范田的村 → 数量标签
+  let newestKey = null;
+  if (filtered.length > 0) {
+    const newest = filtered.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b);
+    newestKey = newest.village ? `${newest.township}|${newest.village}` : newest.township;
+  }
+
+  // 系列3：有示范田的村 → 村名+数量标签（红旗右侧）
+  const countLabels = Object.entries(villageGroups).map(([key, group]) => {
+    const coord = getVillageCoord(group.township, group.village);
+    if (!coord) return null;
+    const isNewest = key === newestKey;
+    const vName = (group.village || group.township).replace(/(村|社区)$/, '');
+    const n = group.records.length;
+    return {
+      name: key,
+      value: [...coord, n],
+      itemStyle: { color: 'transparent' },
+      records: group.records,
+      label: {
+        show: true,
+        formatter: isNewest ? `${vName} ×${n} 🆕` : `${vName} ×${n}`,
+        position: 'right',
+        distance: 10,
+        color: isNewest ? '#22c55e' : 'rgba(255,255,255,0.75)',
+        fontSize: 10,
+        fontWeight: 600,
+        textShadowColor: 'rgba(0,0,0,0.9)',
+        textShadowBlur: 3,
+      }
+    };
+  }).filter(Boolean);
+
+  // 构建村级蓝点（无记录的村只显示点，hover 显示村名）
+  const hasRecordVillages = new Set();
+  Object.values(villageGroups).forEach(g => {
+    if (g.village) hasRecordVillages.add(`${g.township}|${g.village}`);
+  });
+  const villageMarkers = [];
+  Object.entries(TOWNSHIPS).forEach(([twName, twData]) => {
+    if (!twData.villages) return;
+    Object.entries(twData.villages).forEach(([vName, vCoord]) => {
+      if (hasRecordVillages.has(`${twName}|${vName}`)) return; // 有记录的村由红旗显示
+      villageMarkers.push({
+        name: vName,
+        value: [...vCoord, 0],
+        township: twName,
+        label: { show: false },
+        emphasis: {
+          label: { show: true, formatter: vName, fontSize: 11, color: '#4d9fff', textShadowColor: 'rgba(0,0,0,0.9)', textShadowBlur: 3 },
+          itemStyle: { color: '#4d9fff', borderColor: '#fff', borderWidth: 1 }
+        }
+      });
+    });
+  });
+
+  const option = {
+    backgroundColor: 'transparent',
+    geo: {
+      map: 'akesu',
+      roam: true,
+      zoom: 1.0,
+      center: [81.0, 41.0],
+      itemStyle: {
+        areaColor: 'rgba(22,80,60,0.25)',
+        borderColor: 'rgba(34,197,94,0.5)',
+        borderWidth: 2,
+        shadowColor: 'rgba(34,197,94,0.15)',
+        shadowBlur: 10,
+      },
+      regions: [
+        { name: '阿克苏市', itemStyle: { areaColor: 'rgba(22,80,60,0.30)' } },
+        { name: '库车市', itemStyle: { areaColor: 'rgba(22,60,80,0.30)' } },
+        { name: '温宿县', itemStyle: { areaColor: 'rgba(50,80,30,0.30)' } },
+        { name: '沙雅县', itemStyle: { areaColor: 'rgba(30,70,60,0.30)' } },
+        { name: '新和县', itemStyle: { areaColor: 'rgba(40,60,70,0.30)' } },
+        { name: '拜城县', itemStyle: { areaColor: 'rgba(25,75,55,0.30)' } },
+        { name: '乌什县', itemStyle: { areaColor: 'rgba(35,65,75,0.30)' } },
+        { name: '阿瓦提县', itemStyle: { areaColor: 'rgba(45,55,65,0.30)' } },
+        { name: '柯坪县', itemStyle: { areaColor: 'rgba(28,78,48,0.30)' } },
+      ],
+      emphasis: {
+        itemStyle: {
+          areaColor: 'rgba(34,197,94,0.15)',
+          borderColor: 'rgba(34,197,94,0.6)',
+          borderWidth: 2,
+        },
+        label: { show: true, color: '#fff', fontSize: 14 }
+      },
+      label: {
+        show: true,
+        color: 'rgba(255,255,255,0.45)',
+        fontSize: 13,
+        fontWeight: 600,
+        textShadowColor: 'rgba(0,0,0,0.8)',
+        textShadowBlur: 3,
+      },
+    },
+    series: [
+      // 系列0：乡镇名称底图
+      {
+        type: 'scatter',
+        coordinateSystem: 'geo',
+        data: allTownshipLabels,
+        symbolSize: Math.max(4, 8 * mapZoom),
+        silent: true,
+        z: 1,
+      },
+      // 系列1：村级蓝点（无记录的村，hover显示村名）
+      {
+        type: 'scatter',
+        coordinateSystem: 'geo',
+        data: villageMarkers,
+        symbolSize: Math.max(2, 4 * mapZoom),
+        itemStyle: { color: 'rgba(77,159,255,0.3)' },
+        z: 2,
+      },
+      // 系列2：红旗标记（有记录的村）
+      {
+        type: 'scatter',
+        coordinateSystem: 'geo',
+        data: flagData,
+        symbol: FLAG_SVG,
+        symbolSize: Math.max(14, 22 * mapZoom),
+        itemStyle: { color: '#ff4757', shadowColor: 'rgba(255,71,87,0.5)', shadowBlur: 10 },
+        z: 10,
+      },
+      // 系列2：数量标签（不可见点，只显示 label）
+      {
+        type: 'scatter',
+        coordinateSystem: 'geo',
+        data: countLabels,
+        symbolSize: 0,
+        z: 11,
+        silent: true,
+      },
+    ]
+  };
+
+  chart.setOption(option, true);
+  window._villageGroups = villageGroups;
+  window._townshipGroups = townshipGroups;
+
+  chart.off('click');
+  chart.on('click', function(params) {
+    const name = params.name || (params.data && params.data.name);
+    // 优先匹配村级分组，再匹配乡镇分组
+    const group = window._villageGroups[name] || window._townshipGroups[name];
+    if (group) {
+      const records = group.records || group;
+      const displayName = (group.village || group.township || name);
+      if (records.length === 1) {
+        showDetail(records[0].id);
+      } else {
+        showRecordList(displayName, records);
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════
+// 记录列表弹窗
+// ═══════════════════════════════════════════
+function showRecordList(township, records) {
+  const popup = document.getElementById('detailPopup');
+  document.querySelector('.detail-actions').style.display = 'flex';
+  document.getElementById('detailArea').textContent = township;
+  document.getElementById('detailFarmer').textContent = '共 ' + records.length + ' 条示范田记录';
+  const badge = document.getElementById('detailCropBadge');
+  badge.textContent = '点击查看详情';
+  badge.style.background = 'rgba(0,255,242,0.12)';
+  badge.style.color = '#00fff2';
+  badge.style.borderColor = 'rgba(0,255,242,0.2)';
+  let listHTML = records.map(r => {
+    const cropColor = CROP_COLORS[r.crop] || { hex: '#888' };
+    const isNew = (Date.now() - new Date(r.created_at).getTime()) < 7*24*3600*1000;
+    return '<div class="record-item" onclick="event.stopPropagation();closeDetail();setTimeout(()=>showDetail(\''+r.id+'\'),50);" style="cursor:pointer;">' +
+      '<span class="dot" style="background:'+cropColor.hex+';box-shadow:0 0 4px '+cropColor.hex+';"></span>' +
+      '<span class="township">'+(r.village||r.township)+'</span>' +
+      '<span class="farmer">'+(r.farmer_name||'未填')+'</span>' +
+      '<span class="crop-badge">'+r.crop+'</span>' +
+      (isNew ? '<span style="color:#22c55e;font-size:10px;font-weight:700;">NEW</span>' : '') +
+    '</div>';
+  }).join('');
+  document.getElementById('detailGrid').innerHTML = '<div class="record-list" style="max-height:240px;overflow-y:auto;">' + listHTML + '</div>';
+  document.getElementById('detailPhotos').innerHTML = '';
+  document.querySelector('.detail-actions').style.display = 'none';
+  popup.classList.add('show');
+  popup.style.left = (window.innerWidth/2 - 170) + 'px';
+  popup.style.top = (window.innerHeight/2 - 120) + 'px';
+}
+
+// ═══════════════════════════════════════════
+// 详情弹窗
+// ═══════════════════════════════════════════
+function showDetail(id, event) {
+  const record = allRecords.find(r => r.id === id);
+  if (!record) return;
+  currentDetailRecord = record;
+
+  const popup = document.getElementById('detailPopup');
+  document.querySelector('.detail-actions').style.display = 'flex';
+  document.getElementById('detailArea').textContent = `${record.township} ${record.village || ''}`;
+  document.getElementById('detailFarmer').textContent = record.farmer_name || '未填写';
+
+  const badge = document.getElementById('detailCropBadge');
+  const cropColor = CROP_COLORS[record.crop] || { hex: '#888', dim: 'rgba(136,136,136,0.18)' };
+  badge.textContent = record.crop;
+  badge.style.background = cropColor.dim;
+  badge.style.color = cropColor.hex;
+  badge.style.borderColor = cropColor.hex + '33';
+
+  let gridHTML = '';
+  gridHTML += `<div class="detail-field"><div class="f-label">电话</div><div class="f-value">${record.farmer_phone || '-'}</div></div>`;
+  gridHTML += `<div class="detail-field"><div class="f-label">示范产品</div><div class="f-value">${record.demo_product || '-'}</div></div>`;
+  gridHTML += `<div class="detail-field"><div class="f-label">种植面积</div><div class="f-value">${record.plant_area ? record.plant_area + ' 亩' : '-'}</div></div>`;
+  gridHTML += `<div class="detail-field"><div class="f-label">示范面积</div><div class="f-value">${record.demo_area ? record.demo_area + ' 亩' : '-'}</div></div>`;
+  gridHTML += `<div class="detail-field"><div class="f-label">示范时间</div><div class="f-value">${record.demo_date || '-'}</div></div>`;
+  gridHTML += `<div class="detail-field"><div class="f-label">操作人</div><div class="f-value">${record.operator || '-'}</div></div>`;
+  document.getElementById('detailGrid').innerHTML = gridHTML;
+
+  // 解析施用后照片（兼容旧单张和新多张JSON格式）
+  let afterPhotos = [];
+  if (record.photo_after) {
+    try { afterPhotos = JSON.parse(record.photo_after); } catch(e) { afterPhotos = [record.photo_after]; }
+  }
+
+  // 收集所有照片URL用于查看器
+  const allPhotoUrls = [];
+  if (record.photo_before) allPhotoUrls.push('uploads/' + record.photo_before);
+  afterPhotos.forEach(p => allPhotoUrls.push('uploads/' + p));
+
+  let photosHTML = '<h4>效果对比</h4>';
+  if (record.photo_before || afterPhotos.length) {
+    photosHTML += '<div class="photos-compare">';
+    let idx = 0;
+    if (record.photo_before) {
+      photosHTML += `<div class="photo-card" onclick="openViewer(${JSON.stringify(allPhotoUrls).replace(/"/g,'&quot;')}, ${idx})" style="cursor:pointer;">
+        <img src="uploads/${record.photo_before}" alt="施用前">
+        <div class="photo-label">施用前</div>
+      </div>`;
+      idx++;
+    }
+    afterPhotos.forEach((p, i) => {
+      photosHTML += `<div class="photo-card" onclick="openViewer(${JSON.stringify(allPhotoUrls).replace(/"/g,'&quot;')}, ${idx})" style="cursor:pointer;">
+        <img src="uploads/${p}" alt="施用后${i+1}">
+        <div class="photo-label">施用后${afterPhotos.length > 1 ? (i+1) : ''}</div>
+      </div>`;
+      idx++;
+    });
+    photosHTML += '</div>';
+    if (!afterPhotos.length) {
+      photosHTML += '<div class="no-photo" style="margin-top:4px;">施用后照片待上传（观摩时补传）</div>';
+    }
+  } else {
+    photosHTML += '<div class="no-photo">暂无照片</div>';
+  }
+  document.getElementById('detailPhotos').innerHTML = photosHTML;
+
+  popup.classList.add('show');
+  // Position
+  const rect = popup.getBoundingClientRect();
+  let x = window.innerWidth / 2 - rect.width / 2;
+  let y = window.innerHeight / 2 - rect.height / 2;
+  if (event) {
+    x = event.offsetX + 20;
+    y = event.offsetY - 20;
+    const container = document.getElementById('mapChart').getBoundingClientRect();
+    x += container.left;
+    y += container.top;
+  }
+  if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
+  if (y + rect.height > window.innerHeight - 10) y = window.innerHeight - rect.height - 10;
+  if (x < 10) x = 10; if (y < 10) y = 10;
+  popup.style.left = x + 'px';
+  popup.style.top = y + 'px';
+}
+
+function closeDetail() {
+  document.getElementById('detailPopup').classList.remove('show');
+  currentDetailRecord = null;
+}
+
+// ═══════════════════════════════════════════
+// 添加/编辑表单
+// ═══════════════════════════════════════════
+function openAddModal() {
+  document.getElementById('editId').value = '';
+  document.getElementById('modalTitle').textContent = '添加示范田记录';
+  document.getElementById('submitBtn').textContent = '提交记录';
+  document.getElementById('addForm').reset();
+  document.getElementById('f_township').innerHTML = '<option value="">先选区县</option>';
+  document.getElementById('f_village').innerHTML = '<option value="">选择村（可不选）</option>';
+  const beforeEl = document.getElementById('upload_before');
+  beforeEl.classList.remove('has-file');
+  beforeEl.querySelector('.hint').textContent = '点击拍照或选择图片';
+  beforeEl.querySelector('.icon').textContent = '📷';
+  // 重置施用后多图
+  afterPhotoFiles = [];
+  renderAfterGrid();
+  document.getElementById('addModal').classList.add('show');
+}
+
+function editRecord() {
+  // 先保存引用再关闭详情（closeDetail 会清空 currentDetailRecord）
+  const r = currentDetailRecord;
+  if (!r) return;
+  closeDetail();
+
+  document.getElementById('editId').value = r.id;
+  document.getElementById('modalTitle').textContent = '补传照片 / 编辑记录';
+  document.getElementById('submitBtn').textContent = '更新记录';
+  // 反查区县并联动
+  const county = Object.entries(COUNTY_TOWNSHIPS).find(([c, ts]) => ts.includes(r.township));
+  document.getElementById('f_county').value = county ? county[0] : '';
+  onCountyChange();
+  document.getElementById('f_township').value = r.township;
+  onTownshipChange();
+  document.getElementById('f_village').value = r.village || '';
+  document.getElementById('f_crop').value = r.crop;
+  document.getElementById('f_product').value = r.demo_product || '';
+  document.getElementById('f_farmer').value = r.farmer_name || '';
+  document.getElementById('f_phone').value = r.farmer_phone || '';
+  setDateValue('f_date', r.demo_date || '');
+  document.getElementById('f_operator').value = r.operator || '';
+  document.getElementById('f_plant_area').value = r.plant_area || '';
+  document.getElementById('f_demo_area').value = r.demo_area || '';
+
+  // 施用前照片
+  const beforeUpload = document.getElementById('upload_before');
+  beforeUpload.querySelector('input').value = '';
+  if (r.photo_before) {
+    beforeUpload.classList.add('has-file');
+    beforeUpload.querySelector('.icon').innerHTML = `<img src="uploads/${r.photo_before}" style="width:48px;height:48px;object-fit:cover;border-radius:4px;">`;
+    beforeUpload.querySelector('.hint').textContent = '点击替换照片';
+  } else {
+    beforeUpload.classList.remove('has-file');
+    beforeUpload.querySelector('.icon').textContent = '📷';
+    beforeUpload.querySelector('.hint').textContent = '点击拍照或选择图片';
+  }
+
+  // 施用后照片：加载已有照片到网格
+  afterPhotoFiles = [];
+  let existingAfter = [];
+  if (r.photo_after) {
+    try { existingAfter = JSON.parse(r.photo_after); } catch(e) { existingAfter = [r.photo_after]; }
+  }
+  existingAfter.forEach(filename => {
+    afterPhotoFiles.push({ file: null, url: 'uploads/' + filename, existing: filename });
+  });
+  renderAfterGrid();
+
+  // 延迟打开，避免和 closeDetail 的 click 事件冲突
+  setTimeout(() => {
+    document.getElementById('addModal').classList.add('show');
+  }, 50);
+}
+
+function closeModal() {
+  document.getElementById('addModal').classList.remove('show');
+}
+
+function handlePhoto(input, type) {
+  const container = document.getElementById('upload_' + type);
+  if (input.files.length > 0) {
+    container.classList.add('has-file');
+    container.querySelector('.hint').textContent = input.files[0].name.substring(0, 20);
+    container.querySelector('.icon').textContent = '✅';
+  }
+}
+
+// ═══════════════════════════════════════════
+// 图片全屏查看器
+// ═══════════════════════════════════════════
+let viewerPhotos = [];
+let viewerIndex = 0;
+
+function openViewer(photos, index) {
+  viewerPhotos = photos;
+  viewerIndex = index || 0;
+  renderViewer();
+  document.getElementById('photoViewer').classList.add('show');
+}
+
+function closeViewer() {
+  document.getElementById('photoViewer').classList.remove('show');
+}
+
+function viewerNav(dir) {
+  viewerIndex = (viewerIndex + dir + viewerPhotos.length) % viewerPhotos.length;
+  renderViewer();
+}
+
+function renderViewer() {
+  document.getElementById('pvImage').src = viewerPhotos[viewerIndex];
+  document.getElementById('pvCounter').textContent = viewerPhotos.length > 1 ? `${viewerIndex + 1} / ${viewerPhotos.length}` : '';
+  document.querySelector('.pv-prev').style.display = viewerPhotos.length > 1 ? '' : 'none';
+  document.querySelector('.pv-next').style.display = viewerPhotos.length > 1 ? '' : 'none';
+}
+
+// 键盘支持
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('photoViewer').classList.contains('show')) return;
+  if (e.key === 'Escape') closeViewer();
+  if (e.key === 'ArrowLeft') viewerNav(-1);
+  if (e.key === 'ArrowRight') viewerNav(1);
+});
+
+// 施用后多图管理
+let afterPhotoFiles = []; // {file, url}
+
+function addAfterPhotos(input) {
+  const remain = 9 - afterPhotoFiles.length;
+  if (remain <= 0) { alert('最多9张'); input.value = ''; return; }
+  const files = Array.from(input.files).slice(0, remain);
+  files.forEach(f => {
+    afterPhotoFiles.push({ file: f, url: URL.createObjectURL(f) });
+  });
+  if (input.files.length > remain) alert(`最多9张，已添加前${remain}张`);
+  input.value = '';
+  renderAfterGrid();
+}
+
+function removeAfterPhoto(idx) {
+  URL.revokeObjectURL(afterPhotoFiles[idx].url);
+  afterPhotoFiles.splice(idx, 1);
+  renderAfterGrid();
+}
+
+function renderAfterGrid() {
+  const grid = document.getElementById('afterPhotoGrid');
+  let html = '';
+  afterPhotoFiles.forEach((p, i) => {
+    html += `<div class="photo-grid-item">
+      <img src="${p.url}">
+      <div class="photo-remove" onclick="removeAfterPhoto(${i})">&times;</div>
+    </div>`;
+  });
+  if (afterPhotoFiles.length < 9) {
+    html += `<div class="photo-grid-add">
+      <div class="add-icon">+</div>
+      <div class="add-text">${afterPhotoFiles.length}/9</div>
+      <input type="file" accept="image/*" multiple onchange="addAfterPhotos(this)">
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+async function submitForm(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+
+  const editId = document.getElementById('editId').value;
+  const formData = new FormData();
+  formData.append('township', document.getElementById('f_township').value);
+  formData.append('village', document.getElementById('f_village').value);
+  formData.append('crop', document.getElementById('f_crop').value);
+  formData.append('demo_product', document.getElementById('f_product').value);
+  formData.append('farmer_name', document.getElementById('f_farmer').value);
+  formData.append('farmer_phone', document.getElementById('f_phone').value);
+  formData.append('demo_date', getDateValue('f_date'));
+  formData.append('operator', document.getElementById('f_operator').value);
+  formData.append('plant_area', document.getElementById('f_plant_area').value);
+  formData.append('demo_area', document.getElementById('f_demo_area').value);
+
+  const beforeFile = document.querySelector('#upload_before input').files[0];
+  if (beforeFile) formData.append('photo_before', beforeFile);
+  // 施用后照片：已有的传文件名，新的传文件
+  const keepAfter = [];
+  let newIdx = 0;
+  afterPhotoFiles.forEach(p => {
+    if (p.existing) {
+      keepAfter.push(p.existing);
+    } else if (p.file) {
+      formData.append('photo_after_' + newIdx, p.file);
+      newIdx++;
+    }
+  });
+  formData.append('keep_after_photos', JSON.stringify(keepAfter));
+
+  try {
+    if (editId) {
+      await updateRecord(editId, formData);
+    } else {
+      await createRecord(formData);
+    }
+    closeModal();
+    await loadRecords();
+  } catch(e) {
+    alert('提交失败: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editId ? '更新记录' : '提交记录';
+  }
+}
+
+async function deleteRecord() {
+  if (!currentDetailRecord) return;
+  if (!confirm('确定将这条记录移入回收站？')) return;
+  try {
+    await removeRecord(currentDetailRecord.id);
+    closeDetail();
+    await loadRecords();
+    await loadTrash();
+  } catch(e) {
+    alert('删除失败: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════
+// 回收站
+// ═══════════════════════════════════════════
+let trashRecords = [];
+
+async function loadTrash() {
+  try {
+    const r = await authFetch(`${API}/api/trash`);
+    trashRecords = await r.json();
+  } catch(e) {
+    trashRecords = [];
+  }
+  const badge = document.getElementById('trashCount');
+  if (badge) badge.textContent = trashRecords.length;
+  if (badge) badge.style.display = trashRecords.length > 0 ? 'inline-block' : 'none';
+  if (document.getElementById('trashPanel').classList.contains('show')) {
+    renderTrashList();
+  }
+}
+
+function toggleTrash() {
+  const panel = document.getElementById('trashPanel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) {
+    renderTrashList();
+  }
+}
+
+function renderTrashList() {
+  const list = document.getElementById('trashList');
+  if (trashRecords.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:20px;text-align:center;">回收站为空</div>';
+    return;
+  }
+  list.innerHTML = trashRecords.map(r => `<div class="trash-item">
+    <div class="trash-info">
+      <span class="trash-township">${r.township}</span>
+      <span class="trash-farmer">${r.farmer_name || '未填'}</span>
+      <span class="trash-crop">${r.crop}</span>
+      <div class="trash-time">删除于 ${r.deleted_at || ''}</div>
+    </div>
+    <div class="trash-actions" style="${authRole === 'guest' ? 'display:none' : ''}">
+      <button class="btn-sm" onclick="restoreRecord('${r.id}')">恢复</button>
+      <button class="btn-sm danger" onclick="permanentDelete('${r.id}')">永久删除</button>
+    </div>
+  </div>`).join('');
+}
+
+async function restoreRecord(id) {
+  try {
+    await authFetch(`${API}/api/trash/${id}/restore`, { method: 'POST' });
+    await loadRecords();
+    await loadTrash();
+  } catch(e) {
+    alert('恢复失败: ' + e.message);
+  }
+}
+
+async function permanentDelete(id) {
+  if (!confirm('永久删除后无法恢复，确定要永久删除吗？')) return;
+  try {
+    await authFetch(`${API}/api/trash/${id}`, { method: 'DELETE' });
+    await loadTrash();
+  } catch(e) {
+    alert('删除失败: ' + e.message);
+  }
+}
+
+function exportCSV() {
+  const qs = buildSearchParams();
+  const url = `${API}/api/export` + (qs ? '?' + qs : '');
+  window.open(url, '_blank');
+}
+
+// ═══════════════════════════════════════════
+// 登录 / 登出
+// ═══════════════════════════════════════════
+function applyRole() {
+  const isGuest = authRole === 'guest';
+  // 隐藏添加按钮（右下角 +）
+  const fab = document.querySelector('.fab');
+  if (fab) fab.style.display = isGuest ? 'none' : '';
+  // 隐藏详情中的编辑/删除按钮
+  const actions = document.getElementById('detailActions');
+  if (actions) actions.style.display = isGuest ? 'none' : '';
+}
+
+async function guestLogin() {
+  document.getElementById('login_phone').value = 'guest';
+  document.getElementById('login_password').value = 'guest';
+  doLogin();
+}
+
+async function doLogin() {
+  const phone = document.getElementById('login_phone').value.trim();
+  const password = document.getElementById('login_password').value;
+  const errEl = document.getElementById('loginError');
+  if (!phone || !password) { errEl.textContent = '请填写账号和密码'; return; }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '登录中...';
+  try {
+    const r = await fetch(API + '/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone, password: password })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      authToken = data.token;
+      authUser = data.name || phone;
+      authRole = data.role || 'admin';
+      localStorage.setItem(_SK + 'auth_token', authToken);
+      localStorage.setItem(_SK + 'auth_user', authUser);
+      localStorage.setItem(_SK + 'auth_role', authRole);
+      document.getElementById('loginOverlay').classList.add('hidden');
+      applyRole();
+      startApp();
+    } else {
+      errEl.textContent = data.error || '登录失败';
+    }
+  } catch(e) {
+    errEl.textContent = '网络错误';
+  } finally {
+    btn.disabled = false; btn.textContent = '登 录';
+  }
+}
+
+function doLogout() {
+  authToken = '';
+  authUser = '';
+  authRole = '';
+  localStorage.removeItem(_SK + 'auth_token');
+  localStorage.removeItem(_SK + 'auth_user');
+  localStorage.removeItem(_SK + 'auth_role');
+  document.getElementById('loginOverlay').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════
+// 初始化
+// ═══════════════════════════════════════════
+document.addEventListener('click', (e) => {
+  const popup = document.getElementById('detailPopup');
+  if (popup.classList.contains('show') && !popup.contains(e.target) && !e.target.closest('.record-item') && !e.target.closest('#mapChart')) {
+    closeDetail();
+  }
+});
+
+initDateSelects();
+
+function startApp() {
+  console.log('[startApp] begin');
+  fetch('./townships.json?v=' + Date.now())
+    .then(r => { console.log('[startApp] townships.json status:', r.status); return r.json(); })
+    .then(data => {
+      TOWNSHIPS = data;
+      console.log('[startApp] TOWNSHIPS loaded:', Object.keys(data).length, 'townships');
+      initTownshipSelect();
+    })
+    .catch(err => console.error('[startApp] 加载乡镇数据失败:', err))
+    .then(() => {
+      console.log('[startApp] fetching akesu.json...');
+      return fetch('./akesu.json?v=1')
+        .catch(() => {
+          return fetch('https://geo.datav.aliyun.com/areas_v3/bound/652900_full.json');
+        });
+    })
+    .then(r => { console.log('[startApp] akesu status:', r.status); return r.json(); })
+    .then(geoJson => {
+      console.log('[startApp] geoJson loaded, features:', geoJson.features ? geoJson.features.length : 'N/A');
+      initMap(geoJson);
+      console.log('[startApp] map initialized, loading records...');
+      loadTrash();
+      return loadRecords();
+    })
+    .then(() => {
+      console.log('[startApp] all done');
+      setTimeout(() => {
+        document.getElementById('loadingScreen').classList.add('hidden');
+      }, 800);
+    })
+    .catch(err => {
+      console.error('[startApp] 初始化失败:', err);
+      document.getElementById('loadingScreen').classList.add('hidden');
+    });
+}
+
+// 启动时检查登录状态
+(async function() {
+  if (authToken) {
+    try {
+      const r = await authFetch(API + '/api/fields');
+      if (r.status === 401 || r.status === 403) {
+        doLogout();
+        document.getElementById('loadingScreen').classList.add('hidden');
+        return;
+      }
+      document.getElementById('loginOverlay').classList.add('hidden');
+      applyRole();
+      startApp();
+    } catch(e) {
+      doLogout();
+      document.getElementById('loadingScreen').classList.add('hidden');
+    }
+  } else {
+    document.getElementById('loadingScreen').classList.add('hidden');
+  }
+})();
+
+// 保险：3秒后强制隐藏loading，防止任何异常导致卡住
+setTimeout(() => {
+  const ls = document.getElementById('loadingScreen');
+  if (ls && !ls.classList.contains('hidden')) {
+    ls.classList.add('hidden');
+    console.warn('loading screen force-hidden after 3s');
+  }
+}, 3000);
+</script>
+</body>
+</html>
